@@ -1,0 +1,38 @@
+*~
+*.DS_Store
+*.log
+*.cookie
+log
+*~
+
+# XCode noise
+*.swp
+*~.nib
+build/
+*.pbxuser
+*.perspective
+*.perspectivev3
+*.mode1v3
+*.mode2v3
+ff/
+
+# IDEA files
+.idea/*
+*.iml
+deps
+out
+# erlang binaries and release
+
+fyler/*
+ebin/
+*.beam
+.eunit
+*.dump
+
+# other files
+files/app.config
+apps/fyler/priv/fyler.config
+files/vm.args
+reltool.config
+rebar.config
+.rebar
