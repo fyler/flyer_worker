@@ -1,11 +1,12 @@
--module(fyler_worker_amqp).
+-module(fyler_status_amqp).
 -behaviour(gen_server).
 
 -include("../include/log.hrl").
 -include("../include/fyler.hrl").
 -include_lib("amqp_client/include/amqp_client.hrl").
 
--define(SERVER, fyler_task_source).
+-define(SERVER, fyler_status_queue).
+-define(QUEUE, <<"status">>).
 
 -record(state, {
     host  = "" :: string(),
@@ -20,7 +21,7 @@
 %% API Function Exports
 %% ------------------------------------------------------------------
 
--export([start_link/1]).
+-export([start_link/1, send_status/1]).
 
 %% ------------------------------------------------------------------
 %% gen_server Function Exports
@@ -36,17 +37,32 @@
 start_link(Opts) ->
     gen_server:start_link({local, ?SERVER}, ?MODULE, Opts, []).
 
+send_status(Status) ->
+    gen_server:call(?SERVER, {send, Status}).
+
 %% ------------------------------------------------------------------
 %% gen_server Function Definitions
 %% ------------------------------------------------------------------
 
 init(Opts) ->
-    Host = maps:get(amqp_host, Opts, "localhost"),
-    User = maps:get(amqp_user, Opts, <<"guest">>),
-    Pass = maps:get(amqp_pass, Opts, <<"guest">>),
-    Category = maps:get(category, Opts, undefined),
-    self() ! start,
-    {ok, #state{host = Host, user = User, pass = Pass, category = Category}}.
+    
+    proc_lib:init_ack({ok, self()}),
+
+    FullOpts = maps:merge(?Config(amqp, #{}), Opts),
+    Host = maps:get(amqp_host, FullOpts, "localhost"),
+    User = maps:get(amqp_user, FullOpts, <<"guest">>),
+    Pass = maps:get(amqp_pass, FullOpts, <<"guest">>),
+
+    {ok, Connection} = amqp_connection:start(#amqp_params_network{host = Host, username = User, password = Pass}),
+    {ok, Channel} = amqp_connection:open_channel(Connection),
+    amqp_channel:call(Channel, #'queue.declare'{queue = ?QUEUE, durable = true}),
+
+    gen_server:enter_loop(?MODULE, [], #state{connection = Connection, channel = Channel}).
+
+handle_call({send, Status}, _From, #state{channel = Channel} = State) ->
+    Msg = #amqp_msg{payload = term_to_binary(Status)},
+    amqp_channel:cast(Channel, #'basic.publish'{exchange = <<"">>, routing_key = ?QUEUE}, Msg),
+    {reply, ok, State};
 
 handle_call(_Request, _From, State) ->
     {reply, ok, State}.
@@ -54,34 +70,8 @@ handle_call(_Request, _From, State) ->
 handle_cast(_Msg, State) ->
     {noreply, State}.
 
-handle_info(start, #state{host = Host, user = User, pass = Pass, category = Category_} = State) ->
-    Category = atom_to_binary(Category_, utf8),
-    {ok, Connection} = amqp_connection:start(#amqp_params_network{host = Host, username = User, password = Pass}),
-    {ok, Channel} = amqp_connection:open_channel(Connection),
-    amqp_channel:call(Channel, #'queue.declare'{queue = Category, durable = true}),
-    amqp_channel:call(Channel, #'basic.qos'{prefetch_count = 1}),
-    #'basic.consume_ok'{} = amqp_channel:subscribe(Channel, #'basic.consume'{queue = Category}, self()),
-    {noreply, State#state{connection = Connection, channel = Channel}};
-
-handle_info(#'basic.consume_ok'{}, State) ->
-    {noreply, State};
-
 handle_info(#'basic.cancel_ok'{}, State) ->
     {noreply, State};
-
-handle_info({#'basic.deliver'{delivery_tag = Tag}, #amqp_msg{payload = Payload}}, State) ->
-	Message = binary_to_term(Payload),
-    case Message of
-        #task{meta = Meta} = Task ->
-            fyler_worker_server:run_task(Task#task{meta = Meta#{tag => Tag}});
-        _ ->
-            ok
-    end,
-    {noreply, State};
-
-handle_info(#task{meta = #{tag := Tag}}, #state{channel = Channel} = State) ->
-	amqp_channel:cast(Channel, #'basic.ack'{delivery_tag = Tag}),
-	{noreply, State};
 
 handle_info(_Info, State) ->
     {noreply, State}.
@@ -97,4 +87,3 @@ code_change(_OldVsn, State, _Extra) ->
 %% ------------------------------------------------------------------
 %% Internal Function Definitions
 %% ------------------------------------------------------------------
-

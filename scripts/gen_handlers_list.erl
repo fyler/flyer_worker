@@ -2,10 +2,10 @@
 %%! -pa ebin
 
 main(_) ->
-  case filelib:wildcard("*.erl","apps/fyler_worker/src/handlers") of
+  case filelib:wildcard("*.erl","src/handlers") of
     [] -> io:format("handlers not found~n");
     List -> io:format("Add handlers: ~p~n",[List]),
-            {ok, F} = file:open("apps/fyler_worker/include/handlers.hrl",[write]),
+            {ok, F} = file:open("include/handlers.hrl",[write]),
             AtomList = to_atom_list(List),
             ok = file:write(F, io_lib:format("-define(Handlers,~p).",[AtomList])),
             file:close(F)

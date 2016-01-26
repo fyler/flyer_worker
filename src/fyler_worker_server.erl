@@ -80,10 +80,11 @@ handle_sync_event(_Event, _From, StateName, State) ->
     {reply, ok, StateName, State}.
 
 handle_info(start, start, State) ->
-    Category = ?Config(category, undefined),
-    {Module, Params} = ?Config(task_source,  #{}),
+    {Source, SourceOpts} = ?Config(task_source,  {fyler_task_amqp, #{}}),
+    {Queue, QueueeOpts} = ?Config(task_source,  {fyler_task_amqp, #{}}),
+    fyler_worker_sup:start_task_source(Source, SourceOpts),
+    fyler_worker_sup:start_status_queue(Queue, QueueeOpts),
     ulitos_app:ensure_loaded(?Handlers),
-    fyler_worker_sup:start_task_source(Module, Params#{category => Category}),
     {next_state, idle, State};
 
 handle_info({download, ok, #task{file = #file{size = Size}} = Task, Time}, download, #state{stats = Stats} = State) ->

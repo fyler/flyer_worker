@@ -27,8 +27,7 @@ handle_event(#fevent{type = start, task = Task}, State) ->
   ?D({start, Task}),
   {ok, State};
 
-handle_event(#fevent{type = complete, task = Task, stats = Stats}, State) ->
-  ?D(Stats),
+handle_event(#fevent{type = complete, task = Task, stats = _Stats}, State) ->
   fyler_task_source ! Task,
   {ok, State};
 
