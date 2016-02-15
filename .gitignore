@@ -33,3 +33,4 @@ files/app.config
 files/vm.args
 reltool.config
 .rebar
+specs/logs

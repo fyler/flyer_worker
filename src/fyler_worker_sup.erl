@@ -3,7 +3,7 @@
 -behaviour(supervisor).
 
 %% API
--export([start_link/0, start_task_source/2, start_processing/2, stop_processing/1]).
+-export([start_link/0, start_task_source/2, start_status_queue/2, start_processing/2, stop_processing/1]).
 
 %% Supervisor callbacks
 -export([init/1]).
@@ -20,6 +20,10 @@ start_link() ->
 
 start_task_source(Module, Opts) ->
 	Spec = {fyler_task_source, {Module, start_link, [Opts]}, permanent, 5000, worker, [Module]},
+	supervisor:start_child(fyler_worker_sup, Spec).
+
+start_status_queue(Module, Opts) ->
+	Spec = {fyler_status_queue, {Module, start_link, [Opts]}, permanent, 5000, worker, [Module]},
 	supervisor:start_child(fyler_worker_sup, Spec).
 
 start_processing(Task, Handler) ->

@@ -27,12 +27,14 @@ handle_event(#fevent{type = start, task = Task}, State) ->
   ?D({start, Task}),
   {ok, State};
 
-handle_event(#fevent{type = complete, task = Task, stats = _Stats}, State) ->
+handle_event(#fevent{type = complete, task = Task, stats = Stats}, State) ->
   fyler_task_source ! Task,
+  send_status(Stats),
   {ok, State};
 
-handle_event(#fevent{type = fail, task = Task}, State) ->
+handle_event(#fevent{type = fail, task = Task, stats = Stats}, State) ->
   fyler_task_source ! Task,
+  send_status(Stats),
   {ok, State};
 
 handle_event(_Event, State) ->
@@ -49,3 +51,8 @@ code_change(_OldVsn, State, _Extra) ->
 
 terminate(_Reason, _State) ->
   ok.
+
+  %%internal
+
+send_status(Stats) ->
+  gen_server:call(fyler_status_queue, {status, Stats}).
