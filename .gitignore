@@ -1,36 +1,17 @@
-*~
-*.DS_Store
-*.log
-*.cookie
-log
-*~
+.DS_Store
 
-# XCode noise
-*.swp
-*~.nib
-build/
-*.pbxuser
-*.perspective
-*.perspectivev3
-*.mode1v3
-*.mode2v3
-ff/
-
-# IDEA files
-.idea/*
-*.iml
-deps
-out
-# erlang binaries and release
-
-ebin/
-*.beam
+.rebar3
+_*
 .eunit
-*.dump
-
-# other files
-files/app.config
-files/vm.args
-reltool.config
+*.o
+*.beam
+*.plt
+*.swp
+*.swo
+.erlang.cookie
+ebin
+log
+erl_crash.dump
 .rebar
-specs/logs
+logs
+_build

@@ -1,0 +1,9 @@
+language: erlang
+otp_release:
+  - 19.0
+before_install:
+  - wget https://s3.amazonaws.com/rebar3/rebar3 
+  - chmod +x rebar3
+install:
+  - ./rebar3 compile
+script: "./rebar3 eunit && ./rebar3 ct"

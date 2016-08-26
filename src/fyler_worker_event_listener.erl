@@ -23,18 +23,28 @@ listen() ->
 init(_Args) ->
   {ok, []}.
 
-handle_event(#fevent{type = start, task = Task}, State) ->
-  ?D({start, Task}),
+handle_event(#fevent{type = downloading, task = Task}, State) ->
+  fyler_status_publisher:publish_status(downloading, Task),
   {ok, State};
 
-handle_event(#fevent{type = complete, task = Task, stats = Stats}, State) ->
-  fyler_task_source ! Task,
-  send_status(Stats),
+handle_event(#fevent{type = processing, task = Task}, State) ->
+  fyler_status_publisher:publish_status(processing, Task),
   {ok, State};
 
-handle_event(#fevent{type = fail, task = Task, stats = Stats}, State) ->
-  fyler_task_source ! Task,
-  send_status(Stats),
+handle_event(#fevent{type = uploading, task = Task}, State) ->
+  fyler_status_publisher:publish_status(uploading, Task),
+  {ok, State};
+
+handle_event(#fevent{type = completed, task = Task}, State) ->
+  fyler_status_publisher:publish_status(completed, Task),
+  {ok, State};
+
+handle_event(#fevent{type = error, task = Task, error = Error}, State) ->
+  fyler_status_publisher:publish_status(error, Task, Error),
+  {ok, State};
+
+handle_event(#fevent{type = aborted, task = Task}, State) ->
+  fyler_status_publisher:publish_status(aborted, Task),
   {ok, State};
 
 handle_event(_Event, State) ->
@@ -51,8 +61,3 @@ code_change(_OldVsn, State, _Extra) ->
 
 terminate(_Reason, _State) ->
   ok.
-
-  %%internal
-
-send_status(Stats) ->
-  gen_server:call(fyler_status_queue, {status, Stats}).
